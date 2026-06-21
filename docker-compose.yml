@@ -1,0 +1,62 @@
+services:
+
+  # ── 1. MySQL ──────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: event_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: event_db
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d   # 초기 스키마 자동 실행
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uappuser", "-papppass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── 2. Spring Boot 앱 ─────────────────────────────────────
+  app:
+    build:
+      context: ./app          # Dockerfile 위치 (소스코드를 여기에 넣으세요)
+    container_name: event_app
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy   # MySQL 준비 완료 후 앱 실행
+    environment:
+      # application.properties 에서 ${} 로 읽는 값들
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/event_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+      SPRING_DATASOURCE_USERNAME: appuser
+      SPRING_DATASOURCE_PASSWORD: apppass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update   # 테이블 자동 유지
+      TZ: Asia/Seoul
+    ports:
+      - "8080:8080"
+
+  # ── 3. Grafana ────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: event_grafana
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning   # 자동 설정
+
+volumes:
+  mysql_data:
+  grafana_data:

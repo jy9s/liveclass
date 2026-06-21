@@ -1,0 +1,97 @@
+{
+  "title": "Web Event Analytics",
+  "uid": "event-analytics",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "이벤트 타입별 발생 횟수",
+      "type": "piechart",
+      "gridPos": { "x": 0, "y": 0, "w": 10, "h": 8 },
+      "datasource": "MySQL-EventDB",
+      "targets": [
+        {
+          "rawSql": "SELECT event_type AS metric, COUNT(*) AS value FROM event_log GROUP BY event_type ORDER BY value DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": { "pieType": "pie", "displayLabels": ["name", "percent"] }
+    },
+    {
+      "id": 2,
+      "title": "시간대별 이벤트 추이",
+      "type": "timeseries",
+      "gridPos": { "x": 10, "y": 0, "w": 14, "h": 8 },
+      "datasource": "MySQL-EventDB",
+      "targets": [
+        {
+          "rawSql": "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') AS time, COUNT(*) AS value FROM event_log GROUP BY time ORDER BY time",
+          "format": "time_series",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "유저별 총 이벤트 수 (Top 10)",
+      "type": "bargauge",
+      "gridPos": { "x": 0, "y": 8, "w": 10, "h": 8 },
+      "datasource": "MySQL-EventDB",
+      "targets": [
+        {
+          "rawSql": "SELECT CAST(user_id AS CHAR) AS metric, COUNT(*) AS value FROM event_log GROUP BY user_id ORDER BY value DESC LIMIT 10",
+          "format": "table",
+          "refId": "C"
+        }
+      ],
+      "options": { "orientation": "horizontal", "displayMode": "gradient" }
+    },
+    {
+      "id": 4,
+      "title": "에러 이벤트 비율",
+      "type": "stat",
+      "gridPos": { "x": 10, "y": 8, "w": 6, "h": 8 },
+      "datasource": "MySQL-EventDB",
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(SUM(event_type = 'ERROR') / COUNT(*) * 100, 2) AS value FROM event_log",
+          "format": "table",
+          "refId": "D"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 15 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "총 이벤트 수",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+      "datasource": "MySQL-EventDB",
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS value FROM event_log",
+          "format": "table",
+          "refId": "E"
+        }
+      ],
+      "options": { "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" } } }
+    }
+  ]
+}
